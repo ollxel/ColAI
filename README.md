@@ -1,4 +1,4 @@
-Russian README - [ColAI-master/README_RU.md]
+Russian README - [ColAI-master/README_RU.md](README_RU.md)
 # ColAI - Collaborative AI Ecosystem
 
 ColAI is a fully offline platform for collaborative work of multiple neural networks. The system allows multiple AI models to communicate with each other, play games (such as Mafia), discuss projects and work together using local Ollama models.

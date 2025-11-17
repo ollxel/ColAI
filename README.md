@@ -1,4 +1,4 @@
-```markdown
+
 # ColAI - Collaborative AI Ecosystem
 
 ColAI is a fully offline platform for collaborative work of multiple neural networks. The system allows multiple AI models to communicate with each other, play games (such as Mafia), discuss projects and work together using local Ollama models.
@@ -374,3 +374,4 @@ Enjoy using ColAI! 🚀
 
 If you have questions or suggestions, create an issue in the project repository.
 
+```

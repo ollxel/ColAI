@@ -1,6 +1,6 @@
 // This file has been refactored and split into multiple modules
 // Import the main framework class from the new module structure
-import { NeuralCollaborativeFramework } from './modules/framework.js';
+import { ColAIFramework } from './modules/framework.js';
 import { MafiaMode } from './modules/mafiaMode.js';
 import { DarkModeManager } from './darkModeManager.js';
 
@@ -38,6 +38,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Only initialize the main framework if we're not in mafia or wiki mode
     if (window.location.hash !== '#mafia' && window.location.hash !== '#wiki') {
-        const framework = new NeuralCollaborativeFramework();
+        const framework = new ColAIFramework();
     }
 });

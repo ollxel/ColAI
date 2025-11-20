@@ -547,7 +547,7 @@ export class MafiaMode {
     initializeWiki(containerElement) {
         containerElement.innerHTML = `
             <div class="wiki-header">
-                <h2>Neural Collaborative Framework Wiki</h2>
+                <h2>ColAI Wiki</h2>
                 <button id="exit-wiki" class="btn btn-secondary">Return to Main App</button>
             </div>
             <div class="wiki-content">
@@ -576,7 +576,7 @@ export class MafiaMode {
                 <div class="wiki-sections">
                     <section id="wiki-overview">
                         <h2>Overview</h2>
-                        <p>Neural Collaborative Framework is an advanced platform that enables neural networks to collaborate through iterative dialogue on any topic. The framework supports two primary modes:</p>
+                        <p>ColAI is an advanced platform that enables neural networks to collaborate through iterative dialogue on any topic. The framework supports two primary modes:</p>
                         <ul>
                             <li><strong>Collaboration Mode:</strong> Multiple neural networks discuss a topic together, building consensus through structured discussion and voting.</li>
                             <li><strong>Mafia Game Mode:</strong> Neural networks participate in a simulated game of Mafia, making decisions based on limited information and social dynamics.</li>
@@ -687,9 +687,9 @@ export class MafiaMode {
                     
                     <section id="wiki-project-description">
                         <h2>Project Description</h2>
-                        <h3>Neural Collaborative Framework: An Advanced System for AI Collaboration and Simulation</h3>
+                        <h3>ColAI: An Advanced System for AI Collaboration and Simulation</h3>
                         
-                        <p>The Neural Collaborative Framework represents a significant advancement in multi-agent AI systems, designed to facilitate collaborative problem-solving and simulate complex social interactions between neural networks. This project demonstrates how multiple specialized AI agents can work together to explore topics, develop comprehensive analyses, and engage in strategic decision-making within structured environments.</p>
+                        <p>ColAI represents a significant advancement in multi-agent AI systems, designed to facilitate collaborative problem-solving and simulate complex social interactions between neural networks. This project demonstrates how multiple specialized AI agents can work together to explore topics, develop comprehensive analyses, and engage in strategic decision-making within structured environments.</p>
                         
                         <h4>Key Technical Features:</h4>
                         <ul>

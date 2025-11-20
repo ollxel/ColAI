@@ -1094,6 +1094,36 @@ textarea {
     background-color: rgba(255, 247, 237, 0.1);
 }
 
+.dark-mode .message.network4,
+.dark-mode .message.network5,
+.dark-mode .message.network6,
+.dark-mode .message.network7,
+.dark-mode .message.network8 {
+    color: #1f2933;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.dark-mode .message.network4 {
+    background-color: #e6fff8;
+}
+
+.dark-mode .message.network5 {
+    background-color: #ffe6ee;
+}
+
+.dark-mode .message.network6 {
+    background-color: #e6f6ff;
+}
+
+.dark-mode .message.network7 {
+    background-color: #fff9e6;
+}
+
+.dark-mode .message.network8 {
+    background-color: #ffe6e6;
+}
+
 .dark-mode .message.summarizer {
     background-color: rgba(255, 251, 235, 0.1);
 }

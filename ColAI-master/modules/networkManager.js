@@ -1,4 +1,5 @@
 import { OllamaSessionManager } from './ollamaManager.js';
+import { getLanguageLabel } from './languageConfig.js';
 
 export class NetworkManager {
     constructor(networks) {
@@ -76,7 +77,8 @@ export class NetworkManager {
             use_network6: false,
             use_network7: false,
             use_network8: false,
-            unrestricted_mode: false
+            unrestricted_mode: false,
+            use_summarizer: true
         };
         this.networkSettings = {
             network1: { 
@@ -350,24 +352,7 @@ export class NetworkManager {
         // Add language enforcement based on framework's interface language
         const framework = window.neuralFramework;
         if (framework && framework.interfaceLanguage && framework.interfaceLanguage !== 'en') {
-            const languageNames = {
-                'ru': 'Russian (Русский)',
-                'es': 'Spanish (Español)', 
-                'fr': 'French (Français)',
-                'de': 'German (Deutsch)',
-                'it': 'Italian (Italiano)',
-                'pt': 'Portuguese (Português)',
-                'zh': 'Chinese (中文)',
-                'ja': 'Japanese (日本語)',
-                'ko': 'Korean (한국어)',
-                'ar': 'Arabic (العربية)',
-                'hi': 'Hindi (हिन्दी)',
-                'tr': 'Turkish (Türkçe)',
-                'pl': 'Polish (Polski)',
-                'nl': 'Dutch (Nederlands)'
-            };
-            
-            const languageName = languageNames[framework.interfaceLanguage] || framework.interfaceLanguage;
+            const languageName = getLanguageLabel(framework.interfaceLanguage);
             
             systemPrompt += `\n\nCRITICAL LANGUAGE REQUIREMENT: You MUST respond ONLY in ${languageName}. 
             Do NOT use English or any other language. ALL of your responses must be written entirely in ${languageName}.

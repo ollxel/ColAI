@@ -4,8 +4,9 @@ import { UIManager } from './uiManager.js';
 import { PromptGenerator } from './promptGenerator.js';
 import { FileManager } from './fileManager.js';
 import { DialogueManager } from './dialogueManager.js';
+import { getLanguageLabel } from './languageConfig.js';
 
-export class NeuralCollaborativeFramework {
+export class ColAIFramework {
     constructor() {
         this.projectName = '';
         this.projectDescription = '';
@@ -30,6 +31,7 @@ export class NeuralCollaborativeFramework {
         
         // Initialize UI Manager with fileManager
         this.uiManager = new UIManager(this.fileManager);
+        this.localizationService = this.uiManager.localizationService;
         
         // Initialize Network Manager with network personas
         this.networkManager = new NetworkManager();
@@ -74,17 +76,17 @@ export class NeuralCollaborativeFramework {
         const statusDiv = document.getElementById('ollama-status');
         
         if (modelInput) {
-            // Загружаем сохраненную модель
             const savedModel = localStorage.getItem('ollama-model') || 'qwen2.5:14b';
             modelInput.value = savedModel;
             
-            // Обновляем модель при изменении
-            modelInput.addEventListener('change', () => {
+            modelInput.addEventListener('change', async () => {
                 const modelName = modelInput.value.trim();
                 if (modelName) {
                     this.networkManager.setModel(modelName);
                     localStorage.setItem('ollama-model', modelName);
-                    statusDiv.textContent = `Модель установлена: ${modelName}`;
+                    const message = await this.localizationService?.getLocalizedString(`Model set to: ${modelName}`, this.interfaceLanguage) 
+                        || `Model set to: ${modelName}`;
+                    statusDiv.textContent = message;
                     statusDiv.style.color = '#06d6a0';
                 }
             });
@@ -93,33 +95,45 @@ export class NeuralCollaborativeFramework {
         if (checkBtn) {
             checkBtn.addEventListener('click', async () => {
                 checkBtn.disabled = true;
-                checkBtn.textContent = 'Проверка...';
-                statusDiv.textContent = 'Проверка подключения к Ollama...';
+                const checkingLabel = await this.localizationService?.getLocalizedString('Checking...', this.interfaceLanguage) || 'Checking...';
+                checkBtn.textContent = checkingLabel;
                 statusDiv.style.color = '#ff9e00';
+                const verifyingText = await this.localizationService?.getLocalizedString('Verifying connection to Ollama...', this.interfaceLanguage) 
+                    || 'Verifying connection to Ollama...';
+                statusDiv.textContent = verifyingText;
                 
                 try {
                     const isConnected = await this.networkManager.checkOllamaConnection();
                     if (isConnected) {
                         const models = await this.networkManager.getAvailableModels();
-                        statusDiv.textContent = `✓ Ollama подключен. Доступно моделей: ${models.length}`;
-                        statusDiv.style.color = '#06d6a0';
+                        let successMessage = `✓ Ollama connected. Models available: ${models.length}`;
                         
-                        // Проверяем наличие выбранной модели
                         const currentModel = modelInput.value.trim();
                         if (currentModel && !models.includes(currentModel)) {
-                            statusDiv.textContent += `\n⚠ Модель "${currentModel}" не найдена. Убедитесь, что она загружена (ollama pull ${currentModel})`;
+                            successMessage += `\n⚠ Model "${currentModel}" was not found. Make sure it is pulled (ollama pull ${currentModel}).`;
                             statusDiv.style.color = '#ff9e00';
+                        } else {
+                            statusDiv.style.color = '#06d6a0';
                         }
+                        
+                        statusDiv.textContent = await this.localizationService?.getLocalizedString(successMessage, this.interfaceLanguage) 
+                            || successMessage;
                     } else {
-                        statusDiv.textContent = '✗ Ollama не доступен. Убедитесь, что Ollama запущен на http://localhost:11434';
+                        const offlineMessage = '✗ Ollama is not reachable. Ensure Ollama is running at http://localhost:11434';
+                        statusDiv.textContent = await this.localizationService?.getLocalizedString(offlineMessage, this.interfaceLanguage) 
+                            || offlineMessage;
                         statusDiv.style.color = '#ef476f';
                     }
                 } catch (error) {
-                    statusDiv.textContent = `✗ Ошибка: ${error.message}`;
+                    const errorMessage = `✗ Error: ${error.message}`;
+                    statusDiv.textContent = await this.localizationService?.getLocalizedString(errorMessage, this.interfaceLanguage) 
+                        || errorMessage;
                     statusDiv.style.color = '#ef476f';
                 } finally {
                     checkBtn.disabled = false;
-                    checkBtn.textContent = 'Проверить подключение';
+                    const defaultLabel = await this.localizationService?.getLocalizedString('Check Connection', this.interfaceLanguage) 
+                        || 'Check Connection';
+                    checkBtn.textContent = defaultLabel;
                 }
             });
         }
@@ -142,9 +156,9 @@ export class NeuralCollaborativeFramework {
             
             // Add event listener for language switcher
             if (document.getElementById('interface-language')) {
-                document.getElementById('interface-language').addEventListener('change', (e) => {
+                document.getElementById('interface-language').addEventListener('change', async (e) => {
                     this.interfaceLanguage = e.target.value;
-                    this.updateInterfaceLanguage();
+                    await this.updateInterfaceLanguage();
                 });
             }
             
@@ -553,6 +567,7 @@ export class NeuralCollaborativeFramework {
             use_network6: this.uiManager.elements.useNetwork6.checked,
             use_network7: this.uiManager.elements.useNetwork7.checked,
             use_network8: this.uiManager.elements.useNetwork8.checked,
+            use_summarizer: this.uiManager.elements.useSummarizer ? this.uiManager.elements.useSummarizer.checked : true,
             unrestricted_mode: this.unrestrictedMode // Add unrestricted mode setting
         };
         
@@ -612,6 +627,8 @@ export class NeuralCollaborativeFramework {
             return;
         }
         
+        const summarizerEnabled = this.isSummarizerEnabled();
+
         // Process each enabled network
         for (const networkId of enabledNetworks) {
             this.uiManager.updateNetworkStatus(networkId);
@@ -645,6 +662,20 @@ export class NeuralCollaborativeFramework {
                     if (this.discussionPaused) return;
                 }
             }
+        }
+        
+        if (!summarizerEnabled) {
+            this.currentState = 'idle';
+            const transcript = this.generateTranscriptSummary();
+            this.acceptSummary(transcript);
+            this.uiManager.addSystemMessage(this.translateText("Summarizer disabled - skipping summary and voting phases."));
+            
+            if (this.iterations < this.maxIterations || this.infiniteMode) {
+                setTimeout(() => this.startNewIteration(), 1500);
+            } else {
+                this.finalizeDevelopment();
+            }
+            return;
         }
         
         // Generate summary
@@ -711,34 +742,65 @@ export class NeuralCollaborativeFramework {
         this.currentState = 'finalizing';
         this.uiManager.addSystemMessage(this.translateText("All iterations complete. Generating final output..."));
         
+        if (!this.isSummarizerEnabled()) {
+            const transcriptOutput = this.buildTranscriptBasedOutput();
+            this.completeFinalization(transcriptOutput);
+            return;
+        }
+        
         this.uiManager.updateNetworkStatus('summarizer');
         this.uiManager.simulateThinking('summarizer', this.networkManager.networks, 3000).then(() => {
             this.networkManager.generateFinalOutput(this.projectName, this.projectDescription, this.acceptedSummaries).then(finalOutput => {
-                this.finalOutput = finalOutput;
-                this.uiManager.displayFinalOutput(finalOutput);
-                this.currentState = 'completed';
-                this.uiManager.updateNetworkStatus(null);
-                this.uiManager.addSystemMessage(this.translateText("Discussion process completed!"));
-                this.uiManager.elements.resetBtn.disabled = false;
-                this.uiManager.hidePauseButton();
-                
-                // Save the discussion to local storage
-                this.saveCurrentDiscussion();
-                
-                // Check if infinite mode is enabled
-                if (this.infiniteMode) {
-                    setTimeout(() => {
-                        this.uiManager.addSystemMessage(this.translateText("Infinite mode active - continuing discussion..."));
-                        this.startContinuationIteration();
-                    }, 3000);
-                } else {
-                    // Show continue discussion button only if not in infinite mode
-                    if (this.uiManager.elements.continueDiscussionBtn) {
-                        this.uiManager.elements.continueDiscussionBtn.style.display = 'block';
-                    }
-                }
+                this.completeFinalization(finalOutput);
             });
         });
+    }
+    
+    completeFinalization(finalOutput) {
+        this.finalOutput = finalOutput;
+        this.uiManager.displayFinalOutput(finalOutput);
+        this.currentState = 'completed';
+        this.uiManager.updateNetworkStatus(null);
+        this.uiManager.addSystemMessage(this.translateText("Discussion process completed!"));
+        this.uiManager.elements.resetBtn.disabled = false;
+        this.uiManager.hidePauseButton();
+        
+        // Save the discussion to local storage
+        this.saveCurrentDiscussion();
+        
+        if (this.infiniteMode) {
+            setTimeout(() => {
+                this.uiManager.addSystemMessage(this.translateText("Infinite mode active - continuing discussion..."));
+                this.startContinuationIteration();
+            }, 3000);
+        } else if (this.uiManager.elements.continueDiscussionBtn) {
+            this.uiManager.elements.continueDiscussionBtn.style.display = 'block';
+        }
+    }
+    
+    buildTranscriptBasedOutput() {
+        const header = '# ColAI Discussion Transcript\n';
+        if (this.acceptedSummaries.length === 0) {
+            return `${header}\n${this.generateTranscriptSummary()}`;
+        }
+        
+        const sections = this.acceptedSummaries.map((summary, index) => `## Iteration ${index + 1}\n${summary}`);
+        return `${header}\n${sections.join('\n\n')}`;
+    }
+    
+    generateTranscriptSummary() {
+        if (this.discussionHistory.length === 0) {
+            return this.translateText("No discussion was captured during this iteration.");
+        }
+        
+        return this.discussionHistory.map(entry => {
+            const networkName = this.networkManager.networks[entry.role]?.name || entry.role;
+            return `${networkName}:\n${entry.content}`;
+        }).join('\n\n');
+    }
+    
+    isSummarizerEnabled() {
+        return this.networkManager?.modelSettings?.use_summarizer !== false;
     }
     
     startIterativeDiscussion() {
@@ -760,7 +822,11 @@ export class NeuralCollaborativeFramework {
         });
         
         // Register summarizer
-        this.dialogueManager.registerModel('summarizer');
+        if (this.isSummarizerEnabled()) {
+            this.dialogueManager.registerModel('summarizer');
+        } else {
+            this.uiManager.addSystemMessage(this.translateText("Summarizer network disabled - event-driven mode will operate without synthesized summaries."));
+        }
         
         // Start the dialogue manager
         this.dialogueManager.start();
@@ -805,6 +871,10 @@ export class NeuralCollaborativeFramework {
                 }
             },
             summaryRequest: async (context) => {
+                if (!this.isSummarizerEnabled()) {
+                    this.uiManager.addSystemMessage(this.translateText("Summarizer network is disabled - skipping automatic summary generation."));
+                    return;
+                }
                 try {
                     const prompt = this.buildSummaryPromptFromContext(context);
                     const summary = await this.networkManager.generateSummary(prompt, this.summarizerInstructions);
@@ -1036,6 +1106,10 @@ export class NeuralCollaborativeFramework {
     
     async continueWithSummarizingFromUserPrompt(userPrompt) {
         // Handle summarization with user input
+        if (!this.isSummarizerEnabled()) {
+            this.uiManager.addSystemMessage(this.translateText("Summarizer network is disabled. Enable it to continue summarizing with user input."));
+            return;
+        }
         this.uiManager.updateNetworkStatus('summarizer');
         await this.uiManager.simulateThinking('summarizer', this.networkManager.networks, 2000);
         
@@ -1053,6 +1127,10 @@ export class NeuralCollaborativeFramework {
     
     async continueSummarizing() {
         // Continue with standard summarization process
+        if (!this.isSummarizerEnabled()) {
+            this.uiManager.addSystemMessage(this.translateText("Summarizer network is disabled. Enable it to continue summarizing."));
+            return;
+        }
         this.uiManager.updateNetworkStatus('summarizer');
         await this.uiManager.simulateThinking('summarizer', this.networkManager.networks, 2000);
         const summaryContext = this.getDiscussionContext();
@@ -1066,6 +1144,10 @@ export class NeuralCollaborativeFramework {
     
     async continueVotingWithUserPrompt(userPrompt) {
         // Implement voting continuation with user prompt
+        if (!this.isSummarizerEnabled()) {
+            this.uiManager.addSystemMessage(this.translateText("Summarizer network is disabled. Voting workflow is unavailable."));
+            return;
+        }
         this.uiManager.updateNetworkStatus('network1');
         await this.uiManager.simulateThinking('network1', this.networkManager.networks);
         
@@ -1093,6 +1175,10 @@ export class NeuralCollaborativeFramework {
     }
     
     async continueVoting(summary = null) {
+        if (!this.isSummarizerEnabled()) {
+            this.uiManager.addSystemMessage(this.translateText("Summarizer network is disabled. Voting workflow is unavailable."));
+            return;
+        }
         // If no summary is provided, try to find the most recent one
         if (!summary) {
             const messages = Array.from(this.uiManager.elements.chatMessages.querySelectorAll('.message.summarizer'));
@@ -1421,33 +1507,22 @@ export class NeuralCollaborativeFramework {
         return text; // Fallback to English if translation not found
     }
     
-    updateInterfaceLanguage() {
-        // Update all text elements in the interface
-        this.uiManager.updateLanguage(this.interfaceLanguage);
+    async updateInterfaceLanguage() {
+        if (this.uiManager?.updateLanguage) {
+            await this.uiManager.updateLanguage(this.interfaceLanguage);
+        }
         
-        // Add system message about language change
-        this.uiManager.addSystemMessage(this.translateText(`Interface language changed to ${this.getLanguageName(this.interfaceLanguage)}.`));
+        const message = `Interface language changed to ${this.getLanguageName(this.interfaceLanguage)}.`;
+        
+        if (this.localizationService) {
+            const localizedMessage = await this.localizationService.getLocalizedString(message, this.interfaceLanguage);
+            this.uiManager.addSystemMessage(localizedMessage);
+        } else {
+            this.uiManager.addSystemMessage(this.translateText(message));
+        }
     }
     
     getLanguageName(code) {
-        const languageNames = {
-            'en': 'English',
-            'ru': 'Русский',
-            'es': 'Español',
-            'fr': 'Français',
-            'de': 'Deutsch',
-            'it': 'Italiano',
-            'pt': 'Português',
-            'zh': '中文',
-            'ja': '日本語',
-            'ko': '한국어',
-            'ar': 'العربية',
-            'hi': 'हिन्दी',
-            'tr': 'Türkçe',
-            'pl': 'Polski',
-            'nl': 'Nederlands'
-        };
-        
-        return languageNames[code] || code;
+        return getLanguageLabel(code);
     }
 }

@@ -1,4 +1,6 @@
 import { marked } from 'marked';
+import { LocalizationService } from './localizationService.js';
+import { LANGUAGE_OPTIONS } from './languageConfig.js';
 
 export class MafiaUiManager {
     constructor(mafiaGameManager, aiClient) {
@@ -8,61 +10,68 @@ export class MafiaUiManager {
         this.currentPlayerId = null;
         this.playerActions = {};
         this.playerPromptHistory = {};
-        this.language = 'en'; // Default language is English
+        this.availableLanguages = LANGUAGE_OPTIONS;
+        const savedLanguage = localStorage.getItem('mafia-language');
+        this.language = savedLanguage || 'en'; // Default language is English
         this.playerSettings = {}; // Store player-specific settings
         this.customPlayers = []; // Store custom player data
+        this.localizationService = new LocalizationService();
+        this.localizationService.setCurrentLanguage(this.language);
     }
     
     initializeUi(containerElement) {
+        const languageOptions = this.availableLanguages.map(option => `
+            <option value="${option.code}" ${option.code === this.language ? 'selected' : ''}>${option.label}</option>
+        `).join('');
+        
         // Create main mafia game UI
         containerElement.innerHTML = `
             <div class="mafia-game-container">
                 <div class="mafia-header">
-                    <h2>${this.getTranslation('Neural Network Mafia Game')}</h2>
+                    <h2>ColAI Mafia Game</h2>
                     <div class="language-switcher">
                         <select id="language-selector">
-                            <option value="en">English</option>
-                            <option value="ru">Русский</option>
+                            ${languageOptions}
                         </select>
                     </div>
                     <div class="mafia-controls">
                         <div class="setup-controls">
-                            <label for="player-count">${this.getTranslation('Number of Players')}:</label>
+                            <label for="player-count">Number of Players:</label>
                             <div class="player-count-select">
                                 <select id="player-count">
-                                    <option value="4">4 ${this.getTranslation('Players')}</option>
-                                    <option value="5">5 ${this.getTranslation('Players')}</option>
-                                    <option value="6">6 ${this.getTranslation('Players')}</option>
-                                    <option value="7">7 ${this.getTranslation('Players')}</option>
-                                    <option value="8">8 ${this.getTranslation('Players')}</option>
+                                    <option value="4">4 Players</option>
+                                    <option value="5">5 Players</option>
+                                    <option value="6">6 Players</option>
+                                    <option value="7">7 Players</option>
+                                    <option value="8">8 Players</option>
                                 </select>
                             </div>
                             <div class="mafia-count-control">
-                                <label for="mafia-count">${this.getTranslation('Mafia count')}:</label>
+                                <label for="mafia-count">Mafia count:</label>
                                 <input type="number" id="mafia-count" min="1" max="3" value="1">
                             </div>
                             <div class="special-roles-control">
-                                <label for="doctor-count">${this.getTranslation('Doctor count')}:</label>
+                                <label for="doctor-count">Doctor count:</label>
                                 <input type="number" id="doctor-count" min="0" max="2" value="0">
-                                <label for="sheriff-count">${this.getTranslation('Sheriff count')}:</label>
+                                <label for="sheriff-count">Sheriff count:</label>
                                 <input type="number" id="sheriff-count" min="0" max="2" value="0">
-                                <label for="detective-count">${this.getTranslation('Detective count')}:</label>
+                                <label for="detective-count">Detective count:</label>
                                 <input type="number" id="detective-count" min="0" max="2" value="0">
                             </div>
                             <div class="discussion-rounds-control">
-                                <label for="discussion-rounds">${this.getTranslation('Discussion rounds')}:</label>
+                                <label for="discussion-rounds">Discussion rounds:</label>
                                 <input type="number" id="discussion-rounds" min="1" max="10" value="1">
                             </div>
-                            <button id="toggle-player-settings" class="settings-toggle">${this.getTranslation('Player Settings')}</button>
-                            <button id="start-mafia-game" class="btn">${this.getTranslation('Start Game')}</button>
-                            <button id="exit-mafia-game" class="btn btn-secondary">${this.getTranslation('Exit Mafia Mode')}</button>
-                            <button id="add-mafia-player" class="btn btn-secondary" style="margin-left: 10px;">${this.getTranslation('Add Custom Player')}</button>
+                            <button id="toggle-player-settings" class="settings-toggle">Player Settings</button>
+                            <button id="start-mafia-game" class="btn">Start Game</button>
+                            <button id="exit-mafia-game" class="btn btn-secondary">Exit Mafia Mode</button>
+                            <button id="add-mafia-player" class="btn btn-secondary" style="margin-left: 10px;">Add Custom Player</button>
                         </div>
                     </div>
                 </div>
                 
                 <div id="player-settings-container" class="player-settings-container">
-                    <h3 class="player-settings-header">${this.getTranslation('Neural Network Player Settings')}</h3>
+                    <h3 class="player-settings-header">ColAI Player Settings</h3>
                     <div id="player-settings-list">
                         <!-- Player settings will be dynamically added here -->
                     </div>
@@ -70,13 +79,13 @@ export class MafiaUiManager {
                 
                 <div class="mafia-game-area">
                     <div class="mafia-game-log">
-                        <h3>${this.getTranslation('Game Log')}</h3>
+                        <h3>Game Log</h3>
                         <div id="mafia-log-content"></div>
                     </div>
                     
                     <div class="mafia-game-board">
                         <div class="game-status-banner" id="game-status-banner">
-                            <span id="game-status-text">${this.getTranslation('Set up your game')}</span>
+                            <span id="game-status-text">Set up your game</span>
                         </div>
                         
                         <div class="mafia-town">
@@ -86,15 +95,15 @@ export class MafiaUiManager {
                         <div class="mafia-day-counter">
                             <div id="day-phase-indicator">
                                 <div class="phase-icon">🌞</div>
-                                <div class="phase-text">${this.getTranslation('Day')} <span id="day-number">0</span></div>
+                                <div class="phase-text"><span class="phase-label">Day</span> <span id="day-number">0</span></div>
                             </div>
                         </div>
                     </div>
                     
                     <div class="mafia-action-panel">
-                        <h3>${this.getTranslation('Game Actions')}</h3>
+                        <h3>Game Actions</h3>
                         <div id="mafia-action-container"></div>
-                        <h3 class="thought-process-header">${this.getTranslation('Player Thoughts')}</h3>
+                        <h3 class="thought-process-header">Player Thoughts</h3>
                         <div id="thought-process-container" class="thought-process-container">
                             <select id="player-thought-selector"></select>
                             <div id="thought-process-content"></div>
@@ -150,6 +159,76 @@ export class MafiaUiManager {
         
         // Initialize player settings
         this.updatePlayerSettings();
+        
+        // Apply localization to static interface
+        this.setupLocalization(containerElement);
+    }
+    
+    setupLocalization(containerElement) {
+        if (!this.localizationService || !containerElement) return;
+        
+        const mappings = [
+            { selector: '.mafia-header h2', text: 'ColAI Mafia Game' },
+            { selector: 'label[for="player-count"]', text: 'Number of Players:' },
+            { selector: 'label[for="mafia-count"]', text: 'Mafia count:' },
+            { selector: 'label[for="doctor-count"]', text: 'Doctor count:' },
+            { selector: 'label[for="sheriff-count"]', text: 'Sheriff count:' },
+            { selector: 'label[for="detective-count"]', text: 'Detective count:' },
+            { selector: 'label[for="discussion-rounds"]', text: 'Discussion rounds:' },
+            { selector: '#toggle-player-settings', text: 'Player Settings' },
+            { selector: '#start-mafia-game', text: 'Start Game' },
+            { selector: '#exit-mafia-game', text: 'Exit Mafia Mode' },
+            { selector: '#add-mafia-player', text: 'Add Custom Player' },
+            { selector: '#player-settings-container h3', text: 'ColAI Player Settings' },
+            { selector: '.mafia-game-log h3', text: 'Game Log' },
+            { selector: '#game-status-text', text: 'Set up your game' },
+            { selector: '.phase-label', text: 'Day' },
+            { selector: '.mafia-action-panel h3', text: 'Game Actions' },
+            { selector: '.thought-process-header', text: 'Player Thoughts' }
+        ];
+        
+        mappings.forEach(({ selector, text }) => {
+            const element = containerElement.querySelector(selector);
+            if (element) {
+                this.localizationService.registerElement(element, text);
+            }
+        });
+        
+        const playerOptions = containerElement.querySelectorAll('#player-count option');
+        playerOptions.forEach(option => {
+            const baseText = `${option.value} Players`;
+            this.localizationService.registerElement(option, baseText);
+        });
+        
+        this.localizationService.setCurrentLanguage(this.language);
+        this.localizationService.applyTranslations(this.language);
+    }
+    
+    setI18nText(element, baseText, target = 'text') {
+        if (!element) return;
+        element.dataset.i18nText = baseText;
+        element.dataset.i18nTarget = target;
+        
+        switch (target) {
+            case 'text':
+                element.textContent = baseText;
+                break;
+            case 'html':
+                element.innerHTML = baseText;
+                break;
+            case 'value':
+                element.value = baseText;
+                break;
+            case 'placeholder':
+                element.setAttribute('placeholder', baseText);
+                break;
+            default:
+                element.textContent = baseText;
+        }
+        
+        if (this.localizationService) {
+            this.localizationService.translateElement(element, this.language);
+        }
     }
     
     updateMafiaCountLimits() {
@@ -189,10 +268,9 @@ export class MafiaUiManager {
     
     togglePlayerSettings() {
         this.elements.playerSettingsContainer.classList.toggle('visible');
-        this.elements.togglePlayerSettings.textContent = 
-            this.elements.playerSettingsContainer.classList.contains('visible') 
-                ? this.getTranslation('Hide Settings') 
-                : this.getTranslation('Player Settings');
+        const isVisible = this.elements.playerSettingsContainer.classList.contains('visible');
+        const label = isVisible ? 'Hide Settings' : 'Player Settings';
+        this.setI18nText(this.elements.togglePlayerSettings, label);
     }
     
     updatePlayerSettings() {
@@ -285,6 +363,10 @@ export class MafiaUiManager {
     
     changeLanguage() {
         this.language = this.elements.languageSelector.value;
+        localStorage.setItem('mafia-language', this.language);
+        if (this.localizationService) {
+            this.localizationService.setCurrentLanguage(this.language);
+        }
         // Re-initialize UI with new language
         this.initializeUi(document.querySelector('.mafia-container'));
         
@@ -303,7 +385,7 @@ export class MafiaUiManager {
     
     getTranslation(text) {
         const translations = {
-            'Neural Network Mafia Game': {
+            'ColAI Mafia Game': {
                 'ru': 'Игра Мафия для Нейронных Сетей'
             },
             'Number of Players': {

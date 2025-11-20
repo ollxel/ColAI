@@ -1,4 +1,5 @@
 import { marked } from 'marked';
+import { LocalizationService } from './localizationService.js';
 
 export class UIManager {
     constructor(fileManager) {
@@ -51,6 +52,7 @@ export class UIManager {
                 useNetwork6: document.getElementById('use-network6'),
                 useNetwork7: document.getElementById('use-network7'),
                 useNetwork8: document.getElementById('use-network8'),
+                useSummarizer: document.getElementById('use-summarizer'),
                 logitBias: document.getElementById('logit-bias'),
                 fileAttachments: document.getElementById('file-attachments'),
                 attachmentPreview: document.getElementById('attachment-preview'),
@@ -73,6 +75,8 @@ export class UIManager {
         this.chatMode = 'classic'; // 'classic' or 'live'
 
         this.fileManager = fileManager;
+        this.localizationService = new LocalizationService();
+        this.localizationService.setCurrentLanguage(this.currentLanguage);
 
         // Check if we're in collaboration mode before setting up event listeners
         if (window.location.hash !== '#mafia' && window.location.hash !== '#wiki') {
@@ -82,27 +86,6 @@ export class UIManager {
             // Create network settings containers
             this.createNetworkSettings();
 
-            // Update UI labels to be more universal
-            if (document.querySelector('header h1')) {
-                document.querySelector('header h1').textContent = 'Neural Collaborative Framework';
-            }
-            if (document.querySelector('.description p')) {
-                document.querySelector('.description p').textContent = 
-                    'A collaborative framework where neural networks work together through iterative dialogue on any topic.';
-            }
-            if (document.querySelector('label[for="project-name"]')) {
-                document.querySelector('label[for="project-name"]').textContent = 'Topic Name:';
-            }
-            if (document.querySelector('label[for="project-description"]')) {
-                document.querySelector('label[for="project-description"]').textContent = 'Topic Description:';
-            }
-            if (this.elements.projectName) {
-                this.elements.projectName.placeholder = 'Enter topic name';
-            }
-            if (this.elements.projectDescription) {
-                this.elements.projectDescription.placeholder = 'Describe the topic you want to explore';
-            }
-            
             // Set default advanced settings
             if (this.elements.systemPrompt) {
                 this.elements.systemPrompt.value = 
@@ -113,6 +96,11 @@ export class UIManager {
         // Add stream interface elements
         this.streamElements = {};
         this.createStreamInterface();
+    }
+
+    markForTranslation(element, baseText, options = {}) {
+        if (!element || !baseText) return;
+        this.localizationService.registerElement(element, baseText, options);
     }
     
     setupEventListeners() {
@@ -174,6 +162,30 @@ export class UIManager {
             this.elements.frequencyPenaltyValue.textContent = value.toFixed(1);
         });
         
+        // Add network visibility toggles
+        for (let i = 1; i <= 8; i++) {
+            const checkbox = this.elements[`useNetwork${i}`];
+            if (checkbox) {
+                checkbox.addEventListener('change', () => {
+                    this.toggleNetworkVisibility(i, checkbox.checked);
+                    if (!checkbox.checked) {
+                        this.updateNetworkStatus(null);
+                    }
+                });
+                this.toggleNetworkVisibility(i, checkbox.checked);
+            }
+        }
+
+        if (this.elements.useSummarizer) {
+            this.elements.useSummarizer.addEventListener('change', () => {
+                this.toggleSummarizerVisibility(this.elements.useSummarizer.checked);
+                if (!this.elements.useSummarizer.checked) {
+                    this.updateNetworkStatus(null);
+                }
+            });
+            this.toggleSummarizerVisibility(this.elements.useSummarizer.checked);
+        }
+
         // Add file attachment handling
         this.elements.fileAttachments.addEventListener('change', async (event) => {
             const files = Array.from(event.target.files);
@@ -233,13 +245,13 @@ export class UIManager {
         const exportBtn = document.createElement('button');
         exportBtn.id = 'export-discussion';
         exportBtn.className = 'btn btn-secondary';
-        exportBtn.textContent = 'Export Discussion';
+        this.markForTranslation(exportBtn, 'Export Discussion');
         exportBtn.addEventListener('click', () => this.showExportOptions());
         
         const historyBtn = document.createElement('button');
         historyBtn.id = 'view-history';
         historyBtn.className = 'btn btn-secondary';
-        historyBtn.textContent = 'View History';
+        this.markForTranslation(historyBtn, 'View History');
         historyBtn.addEventListener('click', () => this.toggleHistoryPanel());
         
         const unrestrictedModeContainer = document.createElement('div');
@@ -247,9 +259,11 @@ export class UIManager {
         unrestrictedModeContainer.innerHTML = `
             <label class="checkbox-label" for="unrestricted-mode">
                 <input type="checkbox" id="unrestricted-mode">
-                Enable Unrestricted Mode
+                <span data-i18n-text="Enable Unrestricted Mode">Enable Unrestricted Mode</span>
             </label>
-            <div class="network-description">Removes content filtering and allows discussion of any topic</div>
+            <div class="network-description" data-i18n-text="Removes content filtering and allows discussion of any topic">
+                Removes content filtering and allows discussion of any topic
+            </div>
         `;
         
         exportButtonContainer.appendChild(exportBtn);
@@ -1091,6 +1105,12 @@ export class UIManager {
         }
     }
 
+    toggleSummarizerVisibility(visible) {
+        if (this.elements.summarizerStatus) {
+            this.elements.summarizerStatus.style.display = visible ? 'flex' : 'none';
+        }
+    }
+
     showApiKeyManager() {
         // Create modal for API key management
         const modal = document.createElement('div');
@@ -1338,6 +1358,9 @@ export class UIManager {
         this.elements.useNetwork6.checked = false;
         this.elements.useNetwork7.checked = false;
         this.elements.useNetwork8.checked = false;
+        if (this.elements.useSummarizer) {
+            this.elements.useSummarizer.checked = true;
+        }
         this.toggleNetworkVisibility(1, true);
         this.toggleNetworkVisibility(2, true);
         this.toggleNetworkVisibility(3, false);
@@ -1346,6 +1369,7 @@ export class UIManager {
         this.toggleNetworkVisibility(6, false);
         this.toggleNetworkVisibility(7, false);
         this.toggleNetworkVisibility(8, false);
+        this.toggleSummarizerVisibility(true);
         
         // Reset logit bias
         this.elements.logitBias.value = '';
@@ -2302,122 +2326,8 @@ export class UIManager {
         this.streamElements.summariesList.appendChild(summaryEl);
     }
 
-    updateLanguage(languageCode) {
+    async updateLanguage(languageCode) {
         this.currentLanguage = languageCode;
-        
-        // Update all translatable text elements
-        const translatableElements = document.querySelectorAll('[data-translate]');
-        translatableElements.forEach(element => {
-            const key = element.getAttribute('data-translate');
-            const translation = this.getTranslation(key, languageCode);
-            if (element.tagName === 'INPUT' && element.type === 'text') {
-                element.placeholder = translation;
-            } else {
-                element.textContent = translation;
-            }
-        });
-        
-        // Update specific elements
-        this.updateElementTexts(languageCode);
-    }
-    
-    updateElementTexts(languageCode) {
-        const translations = this.getLanguageTranslations();
-        
-        // Update button texts
-        if (this.elements.startBtn) {
-            this.elements.startBtn.textContent = translations['Start Collaboration'][languageCode] || 'Start Collaboration';
-        }
-        if (this.elements.resetBtn) {
-            this.elements.resetBtn.textContent = translations['Reset Project'][languageCode] || 'Reset Project';
-        }
-        
-        // Update labels
-        const labels = document.querySelectorAll('label');
-        labels.forEach(label => {
-            const text = label.textContent.trim();
-            if (translations[text] && translations[text][languageCode]) {
-                label.textContent = translations[text][languageCode];
-            }
-        });
-        
-        // Update placeholders
-        if (this.elements.projectName) {
-            this.elements.projectName.placeholder = translations['Enter topic name'][languageCode] || 'Enter topic name';
-        }
-        if (this.elements.projectDescription) {
-            this.elements.projectDescription.placeholder = translations['Describe the topic you want to explore'][languageCode] || 'Describe the topic you want to explore';
-        }
-    }
-    
-    getLanguageTranslations() {
-        return {
-            'Start Collaboration': {
-                'ru': 'Начать сотрудничество',
-                'es': 'Iniciar colaboración',
-                'fr': 'Démarrer la collaboration',
-                'de': 'Zusammenarbeit starten',
-                'zh': '开始协作',
-                'ja': 'コラボレーション開始',
-                'ko': '협업 시작',
-                'ar': 'بدء التعاون',
-                'hi': 'सहयोग शुरू करें'
-            },
-            'Reset Project': {
-                'ru': 'Сбросить проект',
-                'es': 'Reiniciar proyecto',
-                'fr': 'Réinitialiser le projet',
-                'de': 'Projekt zurücksetzen',
-                'zh': '重置项目',
-                'ja': 'プロジェクトリセット',
-                'ko': '프로젝트 재설정',
-                'ar': 'إعادة تعيين المشروع',
-                'hi': 'प्रोजेक्ट रीसेट करें'
-            },
-            'Topic Name:': {
-                'ru': 'Название темы:',
-                'es': 'Nombre del tema:',
-                'fr': 'Nom du sujet :',
-                'de': 'Themenname:',
-                'zh': '主题名称：',
-                'ja': 'トピック名：',
-                'ko': '주제 이름:',
-                'ar': 'اسم الموضوع:',
-                'hi': 'विषय नाम:'
-            },
-            'Topic Description:': {
-                'ru': 'Описание темы:',
-                'es': 'Descripción del tema:',
-                'fr': 'Description du sujet :',
-                'de': 'Themenbeschreibung:',
-                'zh': '主题描述：',
-                'ja': 'トピック説明：',
-                'ko': '주제 설명:',
-                'ar': 'وصف الموضوع:',
-                'hi': 'विषय विवरण:'
-            },
-            'Enter topic name': {
-                'ru': 'Введите название темы',
-                'es': 'Ingrese el nombre del tema',
-                'fr': 'Saisissez le nom du sujet',
-                'de': 'Themenname eingeben',
-                'zh': '输入主题名称',
-                'ja': 'トピック名を入力',
-                'ko': '주제 이름 입력',
-                'ar': 'أدخل اسم الموضوع',
-                'hi': 'विषय नाम दर्ज करें'
-            },
-            'Describe the topic you want to explore': {
-                'ru': 'Опишите тему, которую хотите исследовать',
-                'es': 'Describe el tema que quieres explorar',
-                'fr': 'Décrivez le sujet que vous voulez explorer',
-                'de': 'Beschreiben Sie das Thema, das Sie erkunden möchten',
-                'zh': '描述您想要探索的主题',
-                'ja': '探索したいトピックを説明してください',
-                'ko': '탐색하고 싶은 주제를 설명하세요',
-                'ar': 'صف الموضوع الذي تريد استكشافه',
-                'hi': 'उस विषय का वर्णन करें जिसे आप एक्सप्लोर करना चाहते हैं'
-            }
-        };
+        await this.localizationService.applyTranslations(languageCode);
     }
 }

@@ -1,3 +1,5 @@
+<img width="605" height="353" alt="Screenshot" src="https://github.com/ollxel/ColAI/blob/e43b2b9d1c76448a2e083264c7b2dec09b43a596/image1" />
+
 Russian README - [README_RU.md](README_RU.md)
 # ColAI - Collaborative AI Ecosystem
 
@@ -136,6 +138,9 @@ First Launch
    · Describe discussion topic
    · Configure parameters (temperature, tokens, etc.)
    · Click "Start Collaboration"
+
+<img width="605" height="353" alt="Screenshot" src="https://github.com/ollxel/ColAI/blob/e43b2b9d1c76448a2e083264c7b2dec09b43a596/image2" />
+
 
 Collaborative Mode
 

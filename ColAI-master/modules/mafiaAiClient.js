@@ -1,4 +1,6 @@
 import { OllamaSessionManager } from './ollamaManager.js';
+import { LocalizationService } from './localizationService.js';
+import { getLanguageLabel } from './languageConfig.js';
 
 export class MafiaAiClient {
     constructor() {
@@ -16,6 +18,8 @@ export class MafiaAiClient {
         };
         this.retryCount = 0;
         this.maxRetries = 3; // Increased retry count
+        this.localizationService = new LocalizationService();
+        this.localizationService.setCurrentLanguage('en');
     }
     
     updateSettings(settings) {
@@ -48,7 +52,7 @@ export class MafiaAiClient {
         } catch (error) {
             console.error("Error in MafiaAiClient.getChatCompletion:", error);
             // Return more varied fallback messages instead of the same generic one
-            const fallbackMessages = language === 'ru' ? [
+            const fallbackMessagesRu = [
                 "Я анализирую поведение каждого игрока и их мотивы.",
                 "Некоторые из вас ведут себя очень подозрительно сегодня.",
                 "Давайте внимательно посмотрим на голосование в прошлом раунде.",
@@ -59,7 +63,8 @@ export class MafiaAiClient {
                 "Поведение некоторых игроков кардинально изменилось с начала игры.",
                 "Мафия определенно пытается скрыться среди нас.",
                 "Нужно обратить внимание на тех, кто молчит больше обычного."
-            ] : [
+            ];
+            const fallbackMessagesEn = [
                 "I'm analyzing each player's behavior and their motivations.",
                 "Some of you are acting very suspiciously today.",
                 "Let's look carefully at the voting patterns from the last round.",
@@ -71,15 +76,22 @@ export class MafiaAiClient {
                 "The mafia is definitely trying to hide among us.",
                 "We need to pay attention to those who are quieter than usual."
             ];
-            return fallbackMessages[Math.floor(Math.random() * fallbackMessages.length)];
+            const pool = language === 'ru' ? fallbackMessagesRu : fallbackMessagesEn;
+            let fallback = pool[Math.floor(Math.random() * pool.length)];
+            if (language !== 'ru') {
+                fallback = await this.getLocalizedFallback(fallback, language);
+            }
+            return fallback;
         }
     }
     
     async _attemptChatCompletion(prompt, temperature = null, language = 'en') {
         try {
-            const systemPrompt = language === 'ru'
+            const languageName = getLanguageLabel(language);
+            const basePrompt = language === 'ru'
                 ? "Вы играете за персонажа в игре Мафия. Отвечайте как ваш персонаж, основываясь на информации об игре. Держите свою роль в секрете, если вы член мафии. Никогда прямо не указывайте свою роль. Отвечайте содержательно и вдумчиво, избегая шаблонных и общих ответов."
                 : "You are playing a character in a Mafia game. Respond as your character would, based on the game information. Keep your role secret if you are a mafia member. Never directly state your role. Give thoughtful and meaningful responses, avoiding generic answers.";
+            const systemPrompt = `${basePrompt}\n\nCRITICAL LANGUAGE REQUIREMENT: Respond ONLY in ${languageName}.`;
                 
             const messages = [
                 {
@@ -132,6 +144,18 @@ export class MafiaAiClient {
                 return this._attemptChatCompletion(prompt, temperature, language);
             }
             throw error;
+        }
+    }
+
+    async getLocalizedFallback(message, language) {
+        if (!this.localizationService || language === 'en') {
+            return message;
+        }
+        try {
+            return await this.localizationService.getLocalizedString(message, language);
+        } catch (error) {
+            console.warn('Fallback translation failed:', error);
+            return message;
         }
     }
 }

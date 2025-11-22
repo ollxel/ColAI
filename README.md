@@ -379,4 +379,4 @@ Enjoy using ColAI! 🚀
 
 If you have questions or suggestions, create an issue in the project repository.
 
-```
+
